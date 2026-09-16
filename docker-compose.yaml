@@ -1,0 +1,60 @@
+services:
+  signature-auth:
+    container_name: signature-auth
+    restart: always
+    build: ./src
+    working_dir: /usr/signature-auth/src
+    command:
+      - sh
+      - -c
+      - |
+        poetry run alembic upgrade head &&
+        exec poetry run python main.py
+    env_file: ./src/core/envs/.env
+    networks:
+      - signature-auth-network
+    ports:
+      - "${SERVER_PORT:-8000}:${SERVER_PORT:-8000}"
+    depends_on:
+      signature-auth-db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:$${SERVER_PORT:-8000}/api/healthcheck >/dev/null" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  signature-auth-db:
+    image: postgres:18-alpine
+    container_name: signature-auth-db
+    restart: always
+    command:
+      - postgres
+      - -p
+      - "${POSTGRES_PORT:-5432}"
+    environment:
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    networks:
+      - signature-auth-network
+    ports:
+      - "${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}"
+    volumes:
+      - signature-auth-db-data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -p $${POSTGRES_PORT:-5432} -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  signature-auth-db-data:
+
+networks:
+  signature-auth-network:
+    name: signature-auth-network
+    external: false
