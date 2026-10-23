@@ -1,0 +1,7 @@
+__pycache__
+poetry.toml
+.env
+.idea
+.python-version
+.vscode
+.venv
