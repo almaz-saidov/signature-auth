@@ -1,10 +1,8 @@
-"""Создание начальной схемы
-
-Идентификатор ревизии: 1ae1ac33ac0e
-Предыдущая ревизия:
-Дата создания: 2026-10-18 15:17:59.499392
-
-"""
+# Создание начальной схемы
+#
+# Идентификатор ревизии: 1ae1ac33ac0e
+# Предыдущая ревизия:
+# Дата создания: 2026-10-18 15:17:59.499392
 
 from typing import Sequence, Union
 
@@ -20,7 +18,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Применить изменения схемы."""
     op.create_table(
         "users",
         sa.Column("username", sa.String(), nullable=False),
@@ -66,6 +63,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Отменить изменения схемы."""
     op.drop_table("signature_references")
     op.drop_table("users")

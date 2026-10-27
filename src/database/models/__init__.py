@@ -1,5 +1,5 @@
-__all__ = ["BaseModel", "User", "SignatureReference"]
+__all__ = ["BaseModel", "UserModel", "SignatureReferenceModel"]
 
 from database.models.base import BaseModel
-from database.models.user import User
-from database.models.signature_reference import SignatureReference
+from database.models.user import UserModel
+from database.models.signature_reference import SignatureReferenceModel
