@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from database.models.base import BaseModel
 
 
-class SignatureReference(BaseModel):
+class SignatureReferenceModel(BaseModel):
     __tablename__ = "signature_references"
     __table_args__ = (
         UniqueConstraint(

@@ -1,17 +1,25 @@
-import os
 from pathlib import Path
-from typing import Final
+from typing import ClassVar, Final
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-ENV_PATH = os.path.join(BASE_DIR, "core", "envs", ".env")
-MAX_PORT_NUMBER: Final = 65535
-
 
 class Settings(BaseSettings):
+    BASE_DIR: ClassVar[Path] = Path(__file__).resolve().parent.parent
+    ENV_PATH: ClassVar[Path] = BASE_DIR / "core" / "envs" / ".env"
+    ALEMBIC_CONFIG_PATH: ClassVar[Path] = BASE_DIR / "alembic.ini"
+
+    MAX_PORT_NUMBER: ClassVar[int] = 65535
+    REFERENCE_SAMPLE_COUNT: ClassVar[int] = 10
+    MIN_SIGNATURE_POINT_COUNT: ClassVar[int] = 2
+    PAGINATION_DEFAULT_PAGE_SIZE: ClassVar[int] = 20
+    PAGINATION_MAX_PAGE_SIZE: ClassVar[int] = 100
+
+    TEST_POSTGRES_IMAGE: ClassVar[str] = "postgres:18-alpine"
+    TEST_POSTGRES_PASSWORD: ClassVar[str] = "test@password%with/special:characters"
+
     SERVER_HOST: str = "0.0.0.0"
     SERVER_PORT: int = Field(default=8000, gt=0, le=MAX_PORT_NUMBER)
 

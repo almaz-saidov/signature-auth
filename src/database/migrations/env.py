@@ -20,7 +20,6 @@ target_metadata = database.models.BaseModel.metadata
 
 
 def run_migrations_offline() -> None:
-    """Сформировать SQL миграций без подключения к базе данных."""
     context.configure(
         url=database_url,
         target_metadata=target_metadata,
@@ -40,7 +39,6 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    """Выполнить миграции через асинхронное подключение к базе данных."""
 
     connectable = create_async_engine(database_url, poolclass=pool.NullPool)
 
@@ -52,7 +50,6 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Запустить миграции с подключением к базе данных."""
 
     asyncio.run(run_async_migrations())
 

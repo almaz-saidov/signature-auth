@@ -1,5 +1,4 @@
 from collections.abc import AsyncIterator, Iterator
-from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -20,13 +19,9 @@ from testcontainers.community.postgres import PostgresContainer
 from core.config import Settings
 from database.session import get_db_session
 
-TEST_POSTGRES_IMAGE = "postgres:18-alpine"
-TEST_POSTGRES_PASSWORD = "test@password%with/special:characters"
-ALEMBIC_CONFIG_PATH = Path(__file__).resolve().parents[1] / "alembic.ini"
-
 
 def run_migrations(database_url: URL) -> None:
-    alembic_config = Config(str(ALEMBIC_CONFIG_PATH))
+    alembic_config = Config(str(Settings.ALEMBIC_CONFIG_PATH))
     alembic_config.attributes["database_url"] = database_url
     command.upgrade(alembic_config, "head")
 
@@ -34,9 +29,9 @@ def run_migrations(database_url: URL) -> None:
 @pytest.fixture(scope="session")
 def test_db_url() -> Iterator[URL]:
     with PostgresContainer(
-        TEST_POSTGRES_IMAGE,
+        Settings.TEST_POSTGRES_IMAGE,
         username="test",
-        password=TEST_POSTGRES_PASSWORD,
+        password=Settings.TEST_POSTGRES_PASSWORD,
         dbname="test",
         driver="asyncpg",
     ) as postgres:
@@ -65,6 +60,7 @@ async def test_db_engine(test_db_url: URL) -> AsyncIterator[AsyncEngine]:
             async with engine.begin() as connection:
                 metadata = MetaData()
                 await connection.run_sync(metadata.reflect)
+
                 for table in reversed(metadata.sorted_tables):
                     if table.name != "alembic_version":
                         await connection.execute(table.delete())
@@ -108,6 +104,7 @@ async def async_client(
 
     try:
         transport = ASGITransport(app=test_app)
+
         async with AsyncClient(
             transport=transport, base_url="http://testserver"
         ) as client:

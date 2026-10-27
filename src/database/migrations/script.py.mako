@@ -1,10 +1,9 @@
-"""${message}
-
-Идентификатор ревизии: ${up_revision}
-Предыдущая ревизия: ${down_revision | comma,n}
-Дата создания: ${create_date}
-
-"""
+% for line in message.splitlines():
+# ${line}
+% endfor
+# Идентификатор ревизии: ${up_revision}
+# Предыдущая ревизия: ${down_revision | comma,n}
+# Дата создания: ${create_date}
 from typing import Sequence, Union
 
 from alembic import op
@@ -19,10 +18,8 @@ depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
 
 
 def upgrade() -> None:
-    """Применить изменения схемы."""
     ${upgrades if upgrades else "pass"}
 
 
 def downgrade() -> None:
-    """Отменить изменения схемы."""
     ${downgrades if downgrades else "pass"}
