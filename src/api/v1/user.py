@@ -9,13 +9,7 @@ from schemas.user import (
 )
 from services.user import UserService
 
-router = APIRouter(
-    prefix="/users",
-    tags=["Users"],
-    responses={
-        status.HTTP_501_NOT_IMPLEMENTED: {"description": "Эндпоинт пока не реализован"},
-    },
-)
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.post(
