@@ -30,6 +30,15 @@ httpx = "^0.28.1"
 ruff = "^0.15.21"
 mypy = "^2.2.0"
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+minversion = "9.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
+
 [[tool.mypy.overrides]]
 module = ["testcontainers.*"]
 ignore_missing_imports = true

@@ -1,14 +1,11 @@
 from collections.abc import AsyncIterator, Iterator
 
 import pytest
-import pytest_asyncio
-from alembic import command
-from alembic.config import Config
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import URL, MetaData
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
@@ -18,12 +15,7 @@ from testcontainers.community.postgres import PostgresContainer
 
 from core.config import Settings
 from database.session import get_db_session
-
-
-def run_migrations(database_url: URL) -> None:
-    alembic_config = Config(str(Settings.ALEMBIC_CONFIG_PATH))
-    alembic_config.attributes["database_url"] = database_url
-    command.upgrade(alembic_config, "head")
+from tests.utils import run_migrations, load_mock_data
 
 
 @pytest.fixture(scope="session")
@@ -45,27 +37,41 @@ def test_db_url() -> Iterator[URL]:
         )
         test_database_url = test_settings.postgres_dsn
         run_migrations(test_database_url)
+        load_mock_data(test_database_url)
 
         yield test_database_url
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def test_db_engine(test_db_url: URL) -> AsyncIterator[AsyncEngine]:
     engine = create_async_engine(test_db_url, echo=False)
 
     try:
         yield engine
     finally:
-        try:
-            async with engine.begin() as connection:
-                metadata = MetaData()
-                await connection.run_sync(metadata.reflect)
+        await engine.dispose()
 
-                for table in reversed(metadata.sorted_tables):
-                    if table.name != "alembic_version":
-                        await connection.execute(table.delete())
+
+@pytest.fixture
+async def db_connection(test_db_engine: AsyncEngine) -> AsyncIterator[AsyncConnection]:
+    async with test_db_engine.connect() as connection:
+        transaction = await connection.begin()
+
+        try:
+            yield connection
         finally:
-            await engine.dispose()
+            await transaction.rollback()
+
+
+@pytest.fixture
+def db_session_factory(
+    db_connection: AsyncConnection,
+) -> async_sessionmaker[AsyncSession]:
+    return async_sessionmaker(
+        bind=db_connection,
+        expire_on_commit=False,
+        join_transaction_mode="create_savepoint",
+    )
 
 
 @pytest.fixture
@@ -75,29 +81,22 @@ def test_app() -> FastAPI:
     return app
 
 
-@pytest_asyncio.fixture
-async def db_session(test_db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
-    async_session = async_sessionmaker(test_db_engine, expire_on_commit=False)
-
-    async with async_session() as session:
+@pytest.fixture
+async def db_session(
+    db_session_factory: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[AsyncSession]:
+    async with db_session_factory() as session:
         yield session
 
 
-@pytest_asyncio.fixture
+@pytest.fixture
 async def async_client(
     test_app: FastAPI,
-    test_db_engine: AsyncEngine,
+    db_session_factory: async_sessionmaker[AsyncSession],
 ) -> AsyncIterator[AsyncClient]:
-    async_session = async_sessionmaker(test_db_engine, expire_on_commit=False)
-
     async def override_get_db_session() -> AsyncIterator[AsyncSession]:
-        async with async_session() as session:
-            try:
-                yield session
-                await session.commit()
-            except SQLAlchemyError:
-                await session.rollback()
-                raise
+        async with db_session_factory() as session:
+            yield session
 
     original_overrides = dict(test_app.dependency_overrides)
     test_app.dependency_overrides[get_db_session] = override_get_db_session

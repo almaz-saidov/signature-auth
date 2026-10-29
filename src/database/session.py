@@ -1,34 +1,20 @@
-import functools
+from functools import cache
 from typing import AsyncGenerator
 
-from sqlalchemy import URL
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from core.config import settings
 
 
-@functools.lru_cache
-def get_engine(url: str | URL) -> AsyncEngine:
-    return create_async_engine(url, echo=False)
+@cache
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    engine = create_async_engine(settings.postgres_dsn)
 
-
-def get_async_db_session(url: str | URL) -> async_sessionmaker[AsyncSession]:
-    return async_sessionmaker(get_engine(url), expire_on_commit=False)
+    return async_sessionmaker(engine, expire_on_commit=False)
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    async_session = get_async_db_session(url=settings.postgres_dsn)
+    session_factory = get_session_factory()
 
-    async with async_session() as session:
-        try:
-            yield session
-            await session.commit()
-        except SQLAlchemyError:
-            await session.rollback()
-            raise
+    async with session_factory() as session:
+        yield session
