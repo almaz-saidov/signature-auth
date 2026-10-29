@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     PAGINATION_DEFAULT_PAGE_SIZE: ClassVar[int] = 20
     PAGINATION_MAX_PAGE_SIZE: ClassVar[int] = 100
 
+    TEST_MOCK_DATA_PATH: ClassVar[Path] = BASE_DIR / "tests" / "mock_data.sql"
     TEST_POSTGRES_IMAGE: ClassVar[str] = "postgres:18-alpine"
     TEST_POSTGRES_PASSWORD: ClassVar[str] = "test@password%with/special:characters"
 
