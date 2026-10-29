@@ -24,16 +24,18 @@ async def get_signature_reference_repository(
 
 async def get_user_service(
     repository: UserRepository = Depends(get_user_repository),
+    session: AsyncSession = Depends(get_db_session),
 ) -> UserService:
-    return UserService(repository=repository)
+    return UserService(repository=repository, session=session)
 
 
 async def get_signature_reference_service(
     repository: SignatureReferenceRepository = Depends(
         get_signature_reference_repository
     ),
+    session: AsyncSession = Depends(get_db_session),
 ) -> SignatureReferenceService:
-    return SignatureReferenceService(repository=repository)
+    return SignatureReferenceService(repository=repository, session=session)
 
 
 async def get_current_user(

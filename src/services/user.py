@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from core.exceptions.http import NotImplementedHTTPException, UnauthorizedException
+from database.repositories.user import UserRepository
 from schemas.user import (
     ApiKeySchema,
     CreateUserPayloadSchema,
@@ -10,7 +11,7 @@ from schemas.user import (
 from services.database import DatabaseService
 
 
-class UserService(DatabaseService):
+class UserService(DatabaseService[UserRepository]):
     async def register(
         self, *, payload: CreateUserPayloadSchema
     ) -> RegisteredUserSchema:
