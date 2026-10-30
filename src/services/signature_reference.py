@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from core.exceptions.http import NotImplementedHTTPException
+from database.repositories.signature_reference import SignatureReferenceRepository
 from schemas.pagination import PaginatedSchema
 from schemas.signature_reference import (
     CreateSignatureReferencePayloadSchema,
@@ -12,7 +13,7 @@ from schemas.signature_reference import (
 from services.database import DatabaseService
 
 
-class SignatureReferenceService(DatabaseService):
+class SignatureReferenceService(DatabaseService[SignatureReferenceRepository]):
     async def create(
         self, *, user_id: UUID, payload: CreateSignatureReferencePayloadSchema
     ) -> tuple[UUID, bool]:

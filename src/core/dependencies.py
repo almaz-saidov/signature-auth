@@ -6,6 +6,8 @@ from database.repositories.signature_reference import SignatureReferenceReposito
 from database.repositories.user import UserRepository
 from database.session import get_db_session
 from schemas.user import UserSchema
+from services.api_key import ApiKeyService
+from services.authentication import AuthenticationService
 from services.signature_reference import SignatureReferenceService
 from services.user import UserService
 
@@ -22,18 +24,36 @@ async def get_signature_reference_repository(
     return SignatureReferenceRepository(session=session)
 
 
+async def get_api_key_service() -> ApiKeyService:
+    return ApiKeyService()
+
+
 async def get_user_service(
     repository: UserRepository = Depends(get_user_repository),
+    session: AsyncSession = Depends(get_db_session),
+    api_key_service: ApiKeyService = Depends(get_api_key_service),
 ) -> UserService:
-    return UserService(repository=repository)
+    return UserService(
+        repository=repository, session=session, api_key_service=api_key_service
+    )
 
 
 async def get_signature_reference_service(
     repository: SignatureReferenceRepository = Depends(
         get_signature_reference_repository
     ),
+    session: AsyncSession = Depends(get_db_session),
 ) -> SignatureReferenceService:
-    return SignatureReferenceService(repository=repository)
+    return SignatureReferenceService(repository=repository, session=session)
+
+
+async def get_authentication_service(
+    user_service: UserService = Depends(get_user_service),
+    api_key_service: ApiKeyService = Depends(get_api_key_service),
+) -> AuthenticationService:
+    return AuthenticationService(
+        user_service=user_service, api_key_service=api_key_service
+    )
 
 
 async def get_current_user(
@@ -44,7 +64,7 @@ async def get_current_user(
             description="API-ключ пользователя сервиса",
         )
     ),
-    service: UserService = Depends(get_user_service),
+    service: AuthenticationService = Depends(get_authentication_service),
 ) -> UserSchema:
     api_key = credentials.credentials if credentials is not None else None
 
