@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     ALEMBIC_CONFIG_PATH: ClassVar[Path] = BASE_DIR / "alembic.ini"
 
     MAX_PORT_NUMBER: ClassVar[int] = 65535
+    API_KEY_LENGTH_BYTES: ClassVar[int] = 32
     REFERENCE_SAMPLE_COUNT: ClassVar[int] = 10
     MIN_SIGNATURE_POINT_COUNT: ClassVar[int] = 2
     PAGINATION_DEFAULT_PAGE_SIZE: ClassVar[int] = 20

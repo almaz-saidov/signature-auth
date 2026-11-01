@@ -75,6 +75,16 @@ def db_session_factory(
 
 
 @pytest.fixture
+def user_api_keys() -> dict[str, str]:
+    return {
+        "test_integrator": "pTcGMT5QVjdo5x3rq9L-OnXLgNhq_fzsDQ52sYR7tpE",
+        "test_integrator_other": "LFq9D7yLIWjMQkfYnT1utUYXLHQMjHI3f4yY9rW7RlA",
+        "test_integrator_many": "4eD3BI_AXWNnwHEj4Iy-ZxATMBRX3yX4kpYjKljtyE8",
+        "test_integrator_inactive": "hmNPYy_dCM0Q5058tAPv8hFFoeWowK-MJZ1JWwcNYhs",
+    }
+
+
+@pytest.fixture
 def test_app() -> FastAPI:
     from main import app
 
