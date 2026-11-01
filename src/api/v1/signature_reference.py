@@ -22,7 +22,6 @@ router = APIRouter(
             "description": "API-ключ отсутствует или неверен"
         },
         status.HTTP_403_FORBIDDEN: {"description": "Доступ запрещён"},
-        status.HTTP_501_NOT_IMPLEMENTED: {"description": "Сценарий пока не реализован"},
     },
 )
 
@@ -40,6 +39,7 @@ router = APIRouter(
         status.HTTP_201_CREATED: {
             "description": "Эталон создан; возвращается его UUID"
         },
+        status.HTTP_501_NOT_IMPLEMENTED: {"description": "Сценарий пока не реализован"},
     },
     description=(
         "Создание эталона по subject_id и десяти образцам из тела запроса.\n"
@@ -83,12 +83,12 @@ async def create_signature_reference(
         "total — количество эталонов после фильтрации, до пагинации."
     ),
 )
-async def list_signature_references(
+async def get_signature_references(
     filters: ListSignatureReferenceFiltersSchema = Query(),
     current_user: UserSchema = Depends(get_current_user),
     service: SignatureReferenceService = Depends(get_signature_reference_service),
 ) -> PaginatedSchema[SignatureReferenceSchema]:
-    return await service.list(user_id=current_user.id, filters=filters)
+    return await service.get_list(user_id=current_user.id, filters=filters)
 
 
 @router.get(
@@ -131,7 +131,8 @@ async def get_signature_reference(
         },
     },
     description=(
-        "Удаление собственного эталона. Чужой или отсутствующий эталон даёт 404."
+        "Удаление собственного эталона. Чужой или отсутствующий эталон даёт 404.\n"
+        "Повторное удаление того же эталона также возвращает 404."
     ),
 )
 async def delete_signature_reference(
@@ -151,6 +152,7 @@ async def delete_signature_reference(
         status.HTTP_200_OK: {
             "description": "Результат validated и метрика score; несовпадение также даёт 200"
         },
+        status.HTTP_501_NOT_IMPLEMENTED: {"description": "Сценарий пока не реализован"},
         status.HTTP_404_NOT_FOUND: {
             "description": "Эталон не найден у текущего владельца"
         },
