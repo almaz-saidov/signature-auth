@@ -1,9 +1,7 @@
-# mypy: disable-error-code=empty-body
-# Заглушки сохраняют возвращаемые типы будущей реализации.
 from datetime import UTC, datetime, time
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import ColumnElement, delete, func, insert, select, update
 
 from database.models import SignatureReferenceModel
 from database.repositories.base import BaseDatabaseRepository
@@ -11,39 +9,51 @@ from schemas.pagination import PaginatedSchema
 from schemas.signature_reference import (
     ListSignatureReferenceFiltersSchema,
     SignatureReferenceSchema,
-    SignatureReferenceRecordSchema,
 )
 
 
 class SignatureReferenceRepository(BaseDatabaseRepository):
     async def create(self, *, user_id: UUID, subject_id: str, data: bytes) -> UUID:
-        pass
+        query = (
+            insert(SignatureReferenceModel)
+            .values(user_id=user_id, subject_id=subject_id, data=data)
+            .returning(SignatureReferenceModel.id)
+        )
+        result = await self._execute(statement=query)
 
-    async def get(
+        return result.scalar_one()
+
+    async def update(
+        self, *, user_id: UUID, reference_id: UUID, data: bytes
+    ) -> UUID | None:
+        query = (
+            update(SignatureReferenceModel)
+            .where(
+                SignatureReferenceModel.user_id == user_id,
+                SignatureReferenceModel.id == reference_id,
+            )
+            .values(data=data)
+            .returning(SignatureReferenceModel.id)
+        )
+        result = await self._execute(statement=query)
+
+        return result.scalar_one_or_none()
+
+    async def get_by_id(
         self, *, user_id: UUID, reference_id: UUID
     ) -> SignatureReferenceSchema | None:
-        query = select(
-            SignatureReferenceModel.id,
-            SignatureReferenceModel.subject_id,
-            SignatureReferenceModel.created_at,
-            SignatureReferenceModel.updated_at,
-        ).where(
-            SignatureReferenceModel.user_id == user_id,
-            SignatureReferenceModel.id == reference_id,
-        )
-        result = await self._execute(query)
-        reference = result.mappings().one_or_none()
-
-        return (
-            SignatureReferenceSchema.model_validate(reference)
-            if reference is not None
-            else None
+        return await self._get_one(
+            user_id=user_id,
+            condition=SignatureReferenceModel.id == reference_id,
         )
 
     async def get_by_subject_id(
         self, *, user_id: UUID, subject_id: str
-    ) -> SignatureReferenceRecordSchema | None:
-        pass
+    ) -> SignatureReferenceSchema | None:
+        return await self._get_one(
+            user_id=user_id,
+            condition=SignatureReferenceModel.subject_id == subject_id,
+        )
 
     async def get_list(
         self, *, user_id: UUID, filters: ListSignatureReferenceFiltersSchema
@@ -73,7 +83,7 @@ class SignatureReferenceRepository(BaseDatabaseRepository):
             )
 
         count_result = await self._execute(
-            select(func.count()).select_from(query.subquery())
+            statement=select(func.count()).select_from(query.subquery())
         )
         total = count_result.scalar_one()
         query = (
@@ -84,7 +94,7 @@ class SignatureReferenceRepository(BaseDatabaseRepository):
             .limit(filters.size)
             .offset((filters.page - 1) * filters.size)
         )
-        result = await self._execute(query)
+        result = await self._execute(statement=query)
 
         return PaginatedSchema[SignatureReferenceSchema](
             total=total,
@@ -96,9 +106,6 @@ class SignatureReferenceRepository(BaseDatabaseRepository):
             ],
         )
 
-    async def update(self, *, user_id: UUID, reference_id: UUID, data: bytes) -> UUID:
-        pass
-
     async def delete(self, *, user_id: UUID, reference_id: UUID) -> bool:
         query = (
             delete(SignatureReferenceModel)
@@ -108,6 +115,24 @@ class SignatureReferenceRepository(BaseDatabaseRepository):
             )
             .returning(SignatureReferenceModel.id)
         )
-        result = await self._execute(query)
+        result = await self._execute(statement=query)
 
         return result.scalar_one_or_none() is not None
+
+    async def _get_one(
+        self, *, user_id: UUID, condition: ColumnElement[bool]
+    ) -> SignatureReferenceSchema | None:
+        query = select(
+            SignatureReferenceModel.id,
+            SignatureReferenceModel.subject_id,
+            SignatureReferenceModel.created_at,
+            SignatureReferenceModel.updated_at,
+        ).where(SignatureReferenceModel.user_id == user_id, condition)
+        result = await self._execute(statement=query)
+        reference = result.mappings().one_or_none()
+
+        return (
+            SignatureReferenceSchema.model_validate(reference)
+            if reference is not None
+            else None
+        )

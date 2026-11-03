@@ -39,7 +39,6 @@ router = APIRouter(
         status.HTTP_201_CREATED: {
             "description": "Эталон создан; возвращается его UUID"
         },
-        status.HTTP_501_NOT_IMPLEMENTED: {"description": "Сценарий пока не реализован"},
     },
     description=(
         "Создание эталона по subject_id и десяти образцам из тела запроса.\n"
@@ -49,18 +48,18 @@ router = APIRouter(
         "Ответ содержит UUID эталона."
     ),
 )
-async def create_signature_reference(
+async def create_or_update_signature_reference(
     payload: CreateSignatureReferencePayloadSchema,
     response: Response,
     current_user: UserSchema = Depends(get_current_user),
     service: SignatureReferenceService = Depends(get_signature_reference_service),
 ) -> UUID:
-    reference_id, created = await service.create(
-        user_id=current_user.id, payload=payload
+    result = await service.create_or_update(user_id=current_user.id, payload=payload)
+    response.status_code = (
+        status.HTTP_201_CREATED if result.action == "created" else status.HTTP_200_OK
     )
-    response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
 
-    return reference_id
+    return result.reference_id
 
 
 @router.get(
@@ -115,7 +114,7 @@ async def get_signature_reference(
     current_user: UserSchema = Depends(get_current_user),
     service: SignatureReferenceService = Depends(get_signature_reference_service),
 ) -> SignatureReferenceSchema:
-    return await service.get(user_id=current_user.id, reference_id=reference_id)
+    return await service.get_by_id(user_id=current_user.id, reference_id=reference_id)
 
 
 @router.delete(

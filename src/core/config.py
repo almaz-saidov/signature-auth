@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import ClassVar, Final
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -13,7 +13,13 @@ class Settings(BaseSettings):
 
     MAX_PORT_NUMBER: ClassVar[int] = 65535
     API_KEY_LENGTH_BYTES: ClassVar[int] = 32
+    ENCRYPTION_NONCE_LENGTH_BYTES: ClassVar[int] = 12
+    ENCRYPTION_TAG_LENGTH_BYTES: ClassVar[int] = 16
     REFERENCE_SAMPLE_COUNT: ClassVar[int] = 10
+    SIGNATURE_REFERENCE_VERSION: ClassVar[int] = 1
+    MILLISECONDS_PER_SECOND: ClassVar[float] = 1000.0
+    FULL_TURN_DEGREES: ClassVar[float] = 360.0
+    CIRCULAR_MEAN_EPSILON: ClassVar[float] = 1e-12
     MIN_SIGNATURE_POINT_COUNT: ClassVar[int] = 2
     PAGINATION_DEFAULT_PAGE_SIZE: ClassVar[int] = 20
     PAGINATION_MAX_PAGE_SIZE: ClassVar[int] = 100
@@ -31,6 +37,8 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = "db_pass"
     POSTGRES_DB: str = "db_name"
 
+    SECRET_KEY: SecretStr = Field(..., min_length=64, max_length=64)
+
     @property
     def postgres_dsn(self) -> URL:
         return URL.create(
@@ -45,4 +53,5 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=ENV_PATH, env_file_encoding="utf-8")
 
 
-settings: Final = Settings()
+# Обязательные настройки загружаются из окружения.
+settings: Final = Settings()  # type: ignore[call-arg]

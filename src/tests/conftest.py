@@ -1,8 +1,10 @@
 from collections.abc import AsyncIterator, Iterator
+from secrets import token_hex
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from pydantic import SecretStr
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
@@ -34,6 +36,7 @@ def test_db_url() -> Iterator[URL]:
             POSTGRES_USER=postgres.username,
             POSTGRES_PASSWORD=postgres.password,
             POSTGRES_DB=postgres.dbname,
+            SECRET_KEY=SecretStr(token_hex(32)),
         )
         test_database_url = test_settings.postgres_dsn
         run_migrations(test_database_url)
