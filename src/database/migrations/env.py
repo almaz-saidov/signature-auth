@@ -8,10 +8,10 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 
 import database.models
-from core.config import settings
+from core.config import database_settings
 
 config = context.config
-database_url = config.attributes.get("database_url", settings.postgres_dsn)
+database_url = config.attributes.get("database_url", database_settings.postgres_dsn)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

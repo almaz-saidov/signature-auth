@@ -9,6 +9,7 @@ class BaseHTTPException(HTTPException):
 
     def __init__(
         self,
+        *,
         detail: str | dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
     ) -> None:
@@ -27,6 +28,7 @@ class UnauthorizedException(BaseHTTPException):
 
     def __init__(
         self,
+        *,
         detail: str | dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
     ) -> None:

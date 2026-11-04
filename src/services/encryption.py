@@ -2,7 +2,7 @@ from secrets import token_bytes
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from core.config import Settings
+from core.config import application_settings
 from core.exceptions.encryption import EncryptionException
 
 
@@ -15,7 +15,7 @@ class EncryptionService:
 
     def encrypt(self, *, data: bytes) -> bytes:
         try:
-            nonce = token_bytes(Settings.ENCRYPTION_NONCE_LENGTH_BYTES)
+            nonce = token_bytes(application_settings.ENCRYPTION_NONCE_LENGTH_BYTES)
             encrypted_data = self._cipher.encrypt(
                 nonce=nonce, data=data, associated_data=None
             )
@@ -26,13 +26,13 @@ class EncryptionService:
 
     def decrypt(self, *, data: bytes) -> bytes:
         if len(data) < (
-            Settings.ENCRYPTION_NONCE_LENGTH_BYTES
-            + Settings.ENCRYPTION_TAG_LENGTH_BYTES
+            application_settings.ENCRYPTION_NONCE_LENGTH_BYTES
+            + application_settings.ENCRYPTION_TAG_LENGTH_BYTES
         ):
             raise EncryptionException()
 
-        nonce = data[: Settings.ENCRYPTION_NONCE_LENGTH_BYTES]
-        encrypted_data = data[Settings.ENCRYPTION_NONCE_LENGTH_BYTES :]
+        nonce = data[: application_settings.ENCRYPTION_NONCE_LENGTH_BYTES]
+        encrypted_data = data[application_settings.ENCRYPTION_NONCE_LENGTH_BYTES :]
 
         try:
             return self._cipher.decrypt(

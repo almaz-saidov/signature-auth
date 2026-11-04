@@ -1,10 +1,8 @@
 from collections.abc import AsyncIterator, Iterator
-from secrets import token_hex
 
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from pydantic import SecretStr
 from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
@@ -15,7 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from testcontainers.community.postgres import PostgresContainer
 
-from core.config import Settings
+from core.config import DatabaseSettings, test_settings
 from database.session import get_db_session
 from tests.utils import run_migrations, load_mock_data
 
@@ -23,22 +21,21 @@ from tests.utils import run_migrations, load_mock_data
 @pytest.fixture(scope="session")
 def test_db_url() -> Iterator[URL]:
     with PostgresContainer(
-        Settings.TEST_POSTGRES_IMAGE,
+        test_settings.POSTGRES_IMAGE,
         username="test",
-        password=Settings.TEST_POSTGRES_PASSWORD,
+        password=test_settings.POSTGRES_PASSWORD,
         dbname="test",
         driver="asyncpg",
     ) as postgres:
-        test_settings = Settings(
+        test_database_settings = DatabaseSettings(
             _env_file=None,  # type: ignore[call-arg]
             POSTGRES_HOST=postgres.get_container_host_ip(),
             POSTGRES_PORT=int(postgres.get_exposed_port(postgres.port)),
             POSTGRES_USER=postgres.username,
             POSTGRES_PASSWORD=postgres.password,
             POSTGRES_DB=postgres.dbname,
-            SECRET_KEY=SecretStr(token_hex(32)),
         )
-        test_database_url = test_settings.postgres_dsn
+        test_database_url = test_database_settings.postgres_dsn
         run_migrations(test_database_url)
         load_mock_data(test_database_url)
 

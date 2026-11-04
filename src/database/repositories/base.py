@@ -8,10 +8,10 @@ from core.exceptions.database import DatabaseException
 
 
 class BaseDatabaseRepository:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, *, session: AsyncSession) -> None:
         self._session = session
 
-    async def _execute(self, statement: Executable) -> Result[Any]:
+    async def _execute(self, *, statement: Executable) -> Result[Any]:
         try:
             return await self._session.execute(statement)
         except SQLAlchemyError as error:

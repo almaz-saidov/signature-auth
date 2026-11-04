@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 
 from core.dependencies import get_current_user, get_user_service
 from schemas.user import (
-    ApiKeySchema,
+    APIKeySchema,
     CreateUserPayloadSchema,
     RegisteredUserSchema,
     UserSchema,
@@ -39,7 +39,7 @@ async def register_user(
 @router.post(
     "/me/api-key",
     status_code=status.HTTP_200_OK,
-    response_model=ApiKeySchema,
+    response_model=APIKeySchema,
     summary="Перевыпустить API-ключ",
     responses={
         status.HTTP_200_OK: {
@@ -61,5 +61,5 @@ async def register_user(
 async def rotate_api_key(
     current_user: UserSchema = Depends(get_current_user),
     service: UserService = Depends(get_user_service),
-) -> ApiKeySchema:
+) -> APIKeySchema:
     return await service.rotate_api_key(user_id=current_user.id)

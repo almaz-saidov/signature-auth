@@ -6,7 +6,7 @@ from database.repositories.base import BaseDatabaseRepository
 
 
 class DatabaseService[RepositoryT: BaseDatabaseRepository]:
-    def __init__(self, repository: RepositoryT, session: AsyncSession) -> None:
+    def __init__(self, *, repository: RepositoryT, session: AsyncSession) -> None:
         self._repository = repository
         self._session = session
 

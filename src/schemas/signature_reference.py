@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import ConfigDict, Field, model_validator
 
-from core.config import settings
+from core.config import signature_settings
 from schemas.base import BaseSchema
 from schemas.signature_feature import (
     SignatureFeaturesSchema,
@@ -29,7 +29,7 @@ class SignaturePointSchema(BaseSchema):
 
 class SignatureSampleSchema(BaseSchema):
     points: list[SignaturePointSchema] = Field(
-        min_length=settings.MIN_SIGNATURE_POINT_COUNT
+        min_length=signature_settings.MIN_SIGNATURE_POINT_COUNT
     )
 
     @model_validator(mode="after")
@@ -70,8 +70,8 @@ class ListSignatureReferenceFiltersSchema(PaginationFiltersSchema):
 class CreateSignatureReferencePayloadSchema(BaseSchema):
     subject_id: str = Field(min_length=1)
     samples: list[SignatureSampleSchema] = Field(
-        min_length=settings.REFERENCE_SAMPLE_COUNT,
-        max_length=settings.REFERENCE_SAMPLE_COUNT,
+        min_length=signature_settings.REFERENCE_SAMPLE_COUNT,
+        max_length=signature_settings.REFERENCE_SAMPLE_COUNT,
     )
 
 
@@ -92,9 +92,10 @@ class SignatureReferenceSaveResultSchema(BaseSchema):
 
 
 class SignatureReferenceDataSchema(BaseSchema):
-    version: int = Field(default=settings.SIGNATURE_REFERENCE_VERSION, ge=1)
+    version: int = Field(default=signature_settings.SIGNATURE_REFERENCE_VERSION, ge=1)
     sample_count: int = Field(
-        ge=settings.REFERENCE_SAMPLE_COUNT, le=settings.REFERENCE_SAMPLE_COUNT
+        ge=signature_settings.REFERENCE_SAMPLE_COUNT,
+        le=signature_settings.REFERENCE_SAMPLE_COUNT,
     )
     features: SignatureFeaturesSchema[SignatureFeatureStatisticsSchema]
 

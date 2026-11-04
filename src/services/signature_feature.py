@@ -1,7 +1,7 @@
 from math import atan2, cos, degrees, hypot, log, radians, sin, sqrt
 from statistics import fmean
 
-from core.config import Settings
+from core.config import signature_settings
 from core.exceptions.signature import InvalidSignatureSampleException
 from schemas.signature_feature import (
     SignatureFeaturesSchema,
@@ -58,19 +58,22 @@ class SignatureFeatureService:
     def get_circular_statistics(
         self, *, values: list[float], weights: list[float] | None = None
     ) -> SignatureFeatureStatisticsSchema:
-        angles = [value % Settings.FULL_TURN_DEGREES for value in values]
+        angles = [value % signature_settings.FULL_TURN_DEGREES for value in values]
         mean_sine = fmean([sin(radians(angle)) for angle in angles], weights=weights)
         mean_cosine = fmean([cos(radians(angle)) for angle in angles], weights=weights)
         resultant_length = min(1.0, hypot(mean_sine, mean_cosine))
 
-        if resultant_length <= Settings.CIRCULAR_MEAN_EPSILON:
+        if resultant_length <= signature_settings.CIRCULAR_MEAN_EPSILON:
             raise InvalidSignatureSampleException(
                 detail="Невозможно определить средний азимут пера."
             )
 
-        mean_angle = degrees(atan2(mean_sine, mean_cosine)) % Settings.FULL_TURN_DEGREES
+        mean_angle = (
+            degrees(atan2(mean_sine, mean_cosine))
+            % signature_settings.FULL_TURN_DEGREES
+        )
 
-        if mean_angle == Settings.FULL_TURN_DEGREES:
+        if mean_angle == signature_settings.FULL_TURN_DEGREES:
             mean_angle = 0.0
 
         standard_deviation = degrees(sqrt(-2 * log(resultant_length)))
@@ -130,7 +133,7 @@ class SignatureFeatureService:
             for previous, current in zip(stroke, stroke[1:]):
                 duration = (
                     current.time_ms - previous.time_ms
-                ) / Settings.MILLISECONDS_PER_SECOND
+                ) / signature_settings.MILLISECONDS_PER_SECOND
 
                 if duration <= 0:
                     raise InvalidSignatureSampleException(

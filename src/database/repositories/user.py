@@ -17,21 +17,21 @@ class UserRepository(BaseDatabaseRepository):
             .values(**data.model_dump(), api_key_hash=api_key_hash)
             .returning(UserModel)
         )
-        result = await self._execute(query)
+        result = await self._execute(statement=query)
         user = result.scalar_one()
 
         return UserSchema.model_validate(user)
 
     async def get_by_username(self, *, username: str) -> UserSchema | None:
         query = select(UserModel).where(UserModel.username == username)
-        result = await self._execute(query)
+        result = await self._execute(statement=query)
         user = result.scalar_one_or_none()
 
         return UserSchema.model_validate(user) if user else None
 
     async def get_by_api_key_hash(self, *, api_key_hash: str) -> UserSchema | None:
         query = select(UserModel).where(UserModel.api_key_hash == api_key_hash)
-        result = await self._execute(query)
+        result = await self._execute(statement=query)
         user = result.scalar_one_or_none()
 
         return UserSchema.model_validate(user) if user else None
@@ -45,7 +45,7 @@ class UserRepository(BaseDatabaseRepository):
             .values(api_key_hash=api_key_hash, api_key_created_at=datetime.now(UTC))
             .returning(UserModel)
         )
-        result = await self._execute(query)
+        result = await self._execute(statement=query)
         user = result.scalar_one_or_none()
 
         return UserSchema.model_validate(user) if user else None

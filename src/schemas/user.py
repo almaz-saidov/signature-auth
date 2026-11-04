@@ -25,7 +25,7 @@ class RegisteredUserSchema(UserSchema):
     )
 
 
-class ApiKeySchema(BaseSchema):
+class APIKeySchema(BaseSchema):
     api_key: str = Field(
         repr=False, description="Сохраните новый ключ: прежний больше не действует"
     )
