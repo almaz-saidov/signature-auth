@@ -1,7 +1,7 @@
 class BaseSignatureException(Exception):
     default_detail: str = "Ошибка обработки подписи."
 
-    def __init__(self, detail: str | None = None) -> None:
+    def __init__(self, *, detail: str | None = None) -> None:
         super().__init__(self.default_detail if detail is None else detail)
 
 

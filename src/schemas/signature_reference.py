@@ -1,11 +1,15 @@
 from datetime import date, datetime
-from typing import Self
+from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import ConfigDict, Field, model_validator
 
-from core.config import settings
+from core.config import signature_settings
 from schemas.base import BaseSchema
+from schemas.signature_feature import (
+    SignatureFeaturesSchema,
+    SignatureFeatureStatisticsSchema,
+)
 
 from schemas.pagination import PaginationFiltersSchema
 
@@ -15,7 +19,7 @@ class SignaturePointSchema(BaseSchema):
 
     x: float = Field(description="Координата X в исходных единицах устройства")
     y: float = Field(description="Координата Y в исходных единицах устройства")
-    pressure: float = Field(ge=0, description="Давление в исходных единицах устройства")
+    pressure: float = Field(ge=0, le=1, description="Давление в диапазоне от 0 до 1")
     azimuth: float = Field(description="Азимут пера в градусах")
     altitude: float = Field(description="Угол подъёма пера в градусах")
     time_ms: float = Field(
@@ -25,7 +29,7 @@ class SignaturePointSchema(BaseSchema):
 
 class SignatureSampleSchema(BaseSchema):
     points: list[SignaturePointSchema] = Field(
-        min_length=settings.MIN_SIGNATURE_POINT_COUNT
+        min_length=signature_settings.MIN_SIGNATURE_POINT_COUNT
     )
 
     @model_validator(mode="after")
@@ -66,8 +70,8 @@ class ListSignatureReferenceFiltersSchema(PaginationFiltersSchema):
 class CreateSignatureReferencePayloadSchema(BaseSchema):
     subject_id: str = Field(min_length=1)
     samples: list[SignatureSampleSchema] = Field(
-        min_length=settings.REFERENCE_SAMPLE_COUNT,
-        max_length=settings.REFERENCE_SAMPLE_COUNT,
+        min_length=signature_settings.REFERENCE_SAMPLE_COUNT,
+        max_length=signature_settings.REFERENCE_SAMPLE_COUNT,
     )
 
 
@@ -80,6 +84,20 @@ class SignatureReferenceSchema(BaseSchema):
     subject_id: str
     created_at: datetime
     updated_at: datetime
+
+
+class SignatureReferenceSaveResultSchema(BaseSchema):
+    reference_id: UUID
+    action: Literal["created", "updated"]
+
+
+class SignatureReferenceDataSchema(BaseSchema):
+    version: int = Field(default=signature_settings.SIGNATURE_REFERENCE_VERSION, ge=1)
+    sample_count: int = Field(
+        ge=signature_settings.REFERENCE_SAMPLE_COUNT,
+        le=signature_settings.REFERENCE_SAMPLE_COUNT,
+    )
+    features: SignatureFeaturesSchema[SignatureFeatureStatisticsSchema]
 
 
 class SignatureReferenceRecordSchema(SignatureReferenceSchema):

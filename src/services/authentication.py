@@ -1,12 +1,12 @@
 from core.exceptions.http import InactiveUserException, UnauthorizedException
 from schemas.user import UserSchema
-from services.api_key import ApiKeyService
+from services.api_key import APIKeyService
 from services.user import UserService
 
 
 class AuthenticationService:
     def __init__(
-        self, user_service: UserService, api_key_service: ApiKeyService
+        self, *, user_service: UserService, api_key_service: APIKeyService
     ) -> None:
         self._user_service = user_service
         self._api_key_service = api_key_service
@@ -15,7 +15,7 @@ class AuthenticationService:
         if not api_key:
             raise UnauthorizedException()
 
-        api_key_hash = self._api_key_service.get_key_hash(api_key)
+        api_key_hash = self._api_key_service.get_key_hash(api_key=api_key)
         user = await self._user_service.get_by_api_key_hash(api_key_hash=api_key_hash)
 
         if user is None:
