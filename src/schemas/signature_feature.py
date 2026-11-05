@@ -12,7 +12,7 @@ class SignatureFeaturesSchema[T](BaseSchema):
     mean_altitude: T
     mean_azimuth: T
     mean_pressure: T
-    normalized_area: T
+    shape_factor: T
 
 
 class SignatureFeatureStatisticsSchema(BaseSchema):

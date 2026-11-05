@@ -47,7 +47,7 @@ class SignatureFeatureService:
                 mean_pressure=fmean(
                     [point.pressure for point in weighted_points], weights=weights
                 ),
-                normalized_area=width * height / dynamics["trajectory_length"] ** 2,
+                shape_factor=width * height / dynamics["trajectory_length"] ** 2,
                 **dynamics,
             )
         except (ArithmeticError, ValueError) as error:
