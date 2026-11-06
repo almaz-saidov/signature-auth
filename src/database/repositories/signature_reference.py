@@ -8,6 +8,7 @@ from database.repositories.base import BaseDatabaseRepository
 from schemas.pagination import PaginatedSchema
 from schemas.signature_reference import (
     ListSignatureReferenceFiltersSchema,
+    SignatureReferenceRecordSchema,
     SignatureReferenceSchema,
 )
 
@@ -45,6 +46,22 @@ class SignatureReferenceRepository(BaseDatabaseRepository):
         return await self._get_one(
             user_id=user_id,
             condition=SignatureReferenceModel.id == reference_id,
+        )
+
+    async def get_record_by_id(
+        self, *, user_id: UUID, reference_id: UUID
+    ) -> SignatureReferenceRecordSchema | None:
+        query = select(SignatureReferenceModel).where(
+            SignatureReferenceModel.user_id == user_id,
+            SignatureReferenceModel.id == reference_id,
+        )
+        result = await self._execute(statement=query)
+        reference = result.scalar_one_or_none()
+
+        return (
+            SignatureReferenceRecordSchema.model_validate(reference)
+            if reference is not None
+            else None
         )
 
     async def get_by_subject_id(

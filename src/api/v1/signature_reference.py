@@ -2,7 +2,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
-from core.dependencies import get_current_user, get_signature_reference_service
+from core.config import signature_settings
+from core.dependencies import (
+    get_current_user,
+    get_signature_reference_service,
+    get_signature_verification_service,
+)
 from schemas.pagination import PaginatedSchema
 from schemas.signature_reference import (
     CreateSignatureReferencePayloadSchema,
@@ -13,6 +18,7 @@ from schemas.signature_reference import (
 )
 from schemas.user import UserSchema
 from services.signature_reference import SignatureReferenceService
+from services.signature_verification import SignatureVerificationService
 
 router = APIRouter(
     prefix="/signature-references",
@@ -149,9 +155,8 @@ async def delete_signature_reference(
     summary="Сравнить образец с эталоном",
     responses={
         status.HTTP_200_OK: {
-            "description": "Результат validated и метрика score; несовпадение также даёт 200"
+            "description": "Результат validated и score в процентах; несовпадение также даёт 200"
         },
-        status.HTTP_501_NOT_IMPLEMENTED: {"description": "Сценарий пока не реализован"},
         status.HTTP_404_NOT_FOUND: {
             "description": "Эталон не найден у текущего владельца"
         },
@@ -160,6 +165,10 @@ async def delete_signature_reference(
         "Сравнение одного образца из тела запроса с собственным эталоном.\n"
         "\n"
         "Для чужого и отсутствующего эталона возвращается одинаковый ответ 404.\n"
+        "Неподдерживаемая версия эталона даёт 422 с просьбой обновить эталон.\n"
+        "score — степень соответствия от 0 до 100, не вероятность подлинности.\n"
+        f"validated=true при score >= {signature_settings.VERIFICATION_THRESHOLD:g}.\n"
+        "Интегратор может применить собственный порог к score.\n"
         "Ответ содержит только validated и score."
     ),
 )
@@ -167,7 +176,7 @@ async def verify_signature(
     reference_id: UUID,
     payload: VerifySignaturePayloadSchema,
     current_user: UserSchema = Depends(get_current_user),
-    service: SignatureReferenceService = Depends(get_signature_reference_service),
+    service: SignatureVerificationService = Depends(get_signature_verification_service),
 ) -> SignatureValidationResultSchema:
     return await service.verify(
         user_id=current_user.id, reference_id=reference_id, sample=payload.sample

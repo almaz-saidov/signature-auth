@@ -1,4 +1,4 @@
-from statistics import fmean, stdev
+from statistics import mean, stdev
 from typing import Literal
 from uuid import UUID
 
@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.exceptions.database import DatabaseException
 from core.exceptions.http import (
     InvalidSignatureException,
-    NotImplementedHTTPException,
     SignatureReferenceNotFoundException,
 )
 from core.exceptions.signature import (
@@ -24,10 +23,10 @@ from schemas.signature_reference import (
     CreateSignatureReferencePayloadSchema,
     ListSignatureReferenceFiltersSchema,
     SignatureReferenceDataSchema,
+    SignatureReferenceRecordSchema,
     SignatureReferenceSaveResultSchema,
     SignatureReferenceSchema,
     SignatureSampleSchema,
-    SignatureValidationResultSchema,
 )
 from services.database import DatabaseService
 from services.encryption import EncryptionService
@@ -63,7 +62,9 @@ class SignatureReferenceService(DatabaseService[SignatureReferenceRepository]):
                 for sample in payload.samples
             ]
 
-            reference = self._create_reference(samples=normalized_samples)
+            reference = self._create_reference_from_samples(
+                normalized_samples=normalized_samples
+            )
             serialized_reference = reference.model_dump_json().encode("utf-8")
 
             encrypted_reference = self._encryption_service.encrypt(
@@ -119,6 +120,18 @@ class SignatureReferenceService(DatabaseService[SignatureReferenceRepository]):
 
         return reference
 
+    async def get_record_by_id(
+        self, *, user_id: UUID, reference_id: UUID
+    ) -> SignatureReferenceRecordSchema:
+        reference = await self._repository.get_record_by_id(
+            user_id=user_id, reference_id=reference_id
+        )
+
+        if reference is None:
+            raise SignatureReferenceNotFoundException()
+
+        return reference
+
     async def delete(self, *, user_id: UUID, reference_id: UUID) -> None:
         try:
             deleted = await self._repository.delete(
@@ -133,17 +146,13 @@ class SignatureReferenceService(DatabaseService[SignatureReferenceRepository]):
             await self._rollback()
             raise
 
-    async def verify(
-        self, *, user_id: UUID, reference_id: UUID, sample: SignatureSampleSchema
-    ) -> SignatureValidationResultSchema:
-        raise NotImplementedHTTPException(
-            detail="Сравнение подписи с эталоном пока не реализовано."
-        )
-
-    def _create_reference(
-        self, *, samples: list[SignatureSampleSchema]
+    def _create_reference_from_samples(
+        self, *, normalized_samples: list[SignatureSampleSchema]
     ) -> SignatureReferenceDataSchema:
-        features = [self._feature_service.extract(sample=sample) for sample in samples]
+        features = [
+            self._feature_service.extract(sample=sample)
+            for sample in normalized_samples
+        ]
         statistics: dict[str, SignatureFeatureStatisticsSchema] = {}
 
         try:
@@ -158,11 +167,11 @@ class SignatureReferenceService(DatabaseService[SignatureReferenceRepository]):
                     )
                 else:
                     statistics[name] = SignatureFeatureStatisticsSchema(
-                        mean=fmean(values), standard_deviation=stdev(values)
+                        mean=mean(values), standard_deviation=stdev(values)
                     )
 
             return SignatureReferenceDataSchema(
-                sample_count=len(samples),
+                sample_count=len(normalized_samples),
                 features=SignatureFeaturesSchema[SignatureFeatureStatisticsSchema](
                     **statistics
                 ),

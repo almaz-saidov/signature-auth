@@ -13,6 +13,7 @@ from services.encryption import EncryptionService
 from services.signature_feature import SignatureFeatureService
 from services.signature_normalization import SignatureNormalizationService
 from services.signature_reference import SignatureReferenceService
+from services.signature_verification import SignatureVerificationService
 from services.user import UserService
 
 
@@ -70,6 +71,24 @@ async def get_signature_reference_service(
     return SignatureReferenceService(
         repository=repository,
         session=session,
+        normalization_service=normalization_service,
+        feature_service=feature_service,
+        encryption_service=encryption_service,
+    )
+
+
+async def get_signature_verification_service(
+    reference_service: SignatureReferenceService = Depends(
+        get_signature_reference_service
+    ),
+    normalization_service: SignatureNormalizationService = Depends(
+        get_signature_normalization_service
+    ),
+    feature_service: SignatureFeatureService = Depends(get_signature_feature_service),
+    encryption_service: EncryptionService = Depends(get_encryption_service),
+) -> SignatureVerificationService:
+    return SignatureVerificationService(
+        reference_service=reference_service,
         normalization_service=normalization_service,
         feature_service=feature_service,
         encryption_service=encryption_service,
