@@ -77,6 +77,24 @@ class SignatureSettings:
 
 
 class TestSettings:
+    MCYT_DATASET_PATH: ClassVar[Path] = (
+        ApplicationSettings.BASE_DIR.parent / "data" / "MCYT_Signature_100"
+    )
+    MCYT_REPORT_DIRECTORY: ClassVar[Path] = (
+        ApplicationSettings.BASE_DIR.parent / "data" / "mcyt_results"
+    )
+    MCYT_FPG_HEADER_FORMAT: ClassVar[str] = "<4sHHHHIH4xIIIHI"
+    MCYT_FPG_POINT_FORMAT: ClassVar[str] = "<5f"
+    MCYT_FPG_METADATA: ClassVar[tuple[bytes, int, int, int, int]] = (
+        b"FPG ",
+        4,
+        1,
+        32,
+        5,
+    )
+    MCYT_AUTHOR_ID_LENGTH: ClassVar[int] = 4
+    MCYT_MAX_PRESSURE: ClassVar[float] = 1023.0
+    MCYT_HTTP_TIMEOUT_SECONDS: ClassVar[float] = 30.0
     MOCK_DATA_PATH: ClassVar[Path] = (
         ApplicationSettings.BASE_DIR / "tests" / "mock_data.sql"
     )
