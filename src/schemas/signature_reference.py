@@ -106,5 +106,9 @@ class SignatureReferenceRecordSchema(SignatureReferenceSchema):
 
 
 class SignatureValidationResultSchema(BaseSchema):
-    validated: bool
-    score: float
+    validated: bool = Field(description="Решение сервиса по порогу соответствия")
+    score: float = Field(
+        ge=0,
+        le=signature_settings.VERIFICATION_SCORE_MAX,
+        description="Степень соответствия в процентах, не вероятность подлинности",
+    )

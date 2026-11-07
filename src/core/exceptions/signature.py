@@ -11,7 +11,3 @@ class InvalidSignatureSampleException(BaseSignatureException):
 
 class ReferenceFormationException(BaseSignatureException):
     default_detail = "Не удалось сформировать эталон подписи."
-
-
-class SignatureVerificationException(BaseSignatureException):
-    default_detail = "Не удалось выполнить сравнение подписи с эталоном."

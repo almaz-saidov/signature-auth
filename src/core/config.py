@@ -61,6 +61,19 @@ class SignatureSettings:
     FULL_TURN_DEGREES: ClassVar[float] = 360.0
     CIRCULAR_MEAN_EPSILON: ClassVar[float] = 1e-12
     MIN_SIGNATURE_POINT_COUNT: ClassVar[int] = 2
+    VERIFICATION_SCORE_MAX: ClassVar[float] = 100.0
+    VERIFICATION_THRESHOLD: ClassVar[float] = 75.0
+    VERIFICATION_WEIGHTS: ClassVar[dict[str, float]] = {
+        "duration_ms": 1.0,
+        "trajectory_length": 1.0,
+        "mean_speed": 1.0,
+        "maximum_speed": 1.0,
+        "rms_acceleration": 1.0,
+        "mean_altitude": 1.0,
+        "mean_azimuth": 1.0,
+        "mean_pressure": 1.0,
+        "shape_factor": 1.0,
+    }
 
 
 class TestSettings:

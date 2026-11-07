@@ -36,9 +36,7 @@ class UserRepository(BaseDatabaseRepository):
 
         return UserSchema.model_validate(user) if user else None
 
-    async def update_api_key(
-        self, *, user_id: UUID, api_key_hash: str
-    ) -> UserSchema | None:
+    async def update_api_key(self, *, user_id: UUID, api_key_hash: str) -> UserSchema:
         query = (
             update(UserModel)
             .where(UserModel.id == user_id)
@@ -46,6 +44,6 @@ class UserRepository(BaseDatabaseRepository):
             .returning(UserModel)
         )
         result = await self._execute(statement=query)
-        user = result.scalar_one_or_none()
+        user = result.scalar_one()
 
-        return UserSchema.model_validate(user) if user else None
+        return UserSchema.model_validate(user)

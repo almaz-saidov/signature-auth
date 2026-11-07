@@ -82,3 +82,7 @@ class SignatureReferenceNotFoundException(NotFoundException):
 
 class InvalidSignatureException(UnprocessableContentException):
     default_detail = "Образцы подписи непригодны для обработки."
+
+
+class UnsupportedSignatureReferenceVersionException(UnprocessableContentException):
+    default_detail = "Версия сохранённого эталона не поддерживается. Обновите эталон."

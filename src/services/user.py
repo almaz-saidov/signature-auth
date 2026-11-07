@@ -3,11 +3,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions.database import DatabaseException
-from core.exceptions.http import (
-    InactiveUserException,
-    UnauthorizedException,
-    UsernameAlreadyExistsException,
-)
+from core.exceptions.http import UsernameAlreadyExistsException
 from database.repositories.user import UserRepository
 from schemas.user import (
     APIKeySchema,
@@ -64,14 +60,6 @@ class UserService(DatabaseService[UserRepository]):
                 user_id=user_id,
                 api_key_hash=api_key_hash,
             )
-
-            if updated_user is None:
-                await self._rollback()
-                raise UnauthorizedException()
-
-            if not updated_user.is_active:
-                await self._rollback()
-                raise InactiveUserException()
 
             await self._commit()
 
