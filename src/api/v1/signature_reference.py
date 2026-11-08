@@ -167,7 +167,7 @@ async def delete_signature_reference(
         "Для чужого и отсутствующего эталона возвращается одинаковый ответ 404.\n"
         "Неподдерживаемая версия эталона даёт 422 с просьбой обновить эталон.\n"
         "score — степень соответствия от 0 до 100, не вероятность подлинности.\n"
-        f"validated=true при score >= {signature_settings.VERIFICATION_THRESHOLD:g}.\n"
+        f"validated=true при score >= {signature_settings.VERIFICATION_THRESHOLD}.\n"
         "Интегратор может применить собственный порог к score.\n"
         "Ответ содержит только validated и score."
     ),

@@ -56,23 +56,37 @@ class DatabaseSettings(BaseSettings):
 
 class SignatureSettings:
     REFERENCE_SAMPLE_COUNT: ClassVar[int] = 10
-    SIGNATURE_REFERENCE_VERSION: ClassVar[int] = 1
+    SIGNATURE_REFERENCE_VERSION: ClassVar[int] = 2
+    SIGNATURE_PHASE_NAMES: ClassVar[tuple[str, ...]] = ("start", "middle", "end")
     MILLISECONDS_PER_SECOND: ClassVar[float] = 1000.0
     FULL_TURN_DEGREES: ClassVar[float] = 360.0
     CIRCULAR_MEAN_EPSILON: ClassVar[float] = 1e-12
     MIN_SIGNATURE_POINT_COUNT: ClassVar[int] = 2
     VERIFICATION_SCORE_MAX: ClassVar[float] = 100.0
-    VERIFICATION_THRESHOLD: ClassVar[float] = 75.0
+    VERIFICATION_THRESHOLD: ClassVar[float] = 44.887893393784765
     VERIFICATION_WEIGHTS: ClassVar[dict[str, float]] = {
-        "duration_ms": 1.0,
-        "trajectory_length": 1.0,
-        "mean_speed": 1.0,
-        "maximum_speed": 1.0,
-        "rms_acceleration": 1.0,
-        "mean_altitude": 1.0,
-        "mean_azimuth": 1.0,
-        "mean_pressure": 1.0,
-        "shape_factor": 1.0,
+        "duration_ms": 0.06695575560380373,
+        "trajectory_length": 0.007568917045878567,
+        "mean_speed": 4.6607070664248996e-07,
+        "maximum_speed": 0.07592229700775364,
+        "rms_acceleration": 0.03131696198535675,
+        "mean_altitude": 0.060107213412768076,
+        "mean_azimuth": 0.0739785584463694,
+        "mean_pressure": 0.0,
+        "shape_factor": 0.05034562384476233,
+        "pen_lift_count": 0.025005825433159358,
+        "contact_duration_ms": 0.046612966682284214,
+        "pen_up_duration_ms": 0.047213121894756,
+        "start_x": 0.054154605120882084,
+        "start_y": 0.045277794766003236,
+        "end_x": 0.04509507683944964,
+        "end_y": 0.05595191105424617,
+        "mean_speed_start": 0.05209846089511083,
+        "mean_speed_middle": 0.06908957894731531,
+        "mean_speed_end": 0.054646346968722004,
+        "mean_pressure_start": 0.04808417585733531,
+        "mean_pressure_middle": 0.02901276600437474,
+        "mean_pressure_end": 0.06156157611896182,
     }
 
 

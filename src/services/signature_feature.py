@@ -18,42 +18,140 @@ class SignatureFeatureService:
 
         try:
             dynamics = self._get_dynamics(strokes=strokes)
-            weighted_points: list[SignaturePointSchema] = []
-            weights: list[float] = []
-
-            for stroke in strokes:
-                for previous, current in zip(stroke, stroke[1:]):
-                    weight = (current.time_ms - previous.time_ms) / 2
-                    weighted_points.extend((previous, current))
-                    weights.extend((weight, weight))
-
-            contact_points = [point for stroke in strokes for point in stroke]
-            width = max(point.x for point in contact_points) - min(
-                point.x for point in contact_points
-            )
-            height = max(point.y for point in contact_points) - min(
-                point.y for point in contact_points
-            )
-            azimuth = self.get_circular_statistics(
-                values=[point.azimuth for point in weighted_points], weights=weights
-            )
+            duration_ms = sample.points[-1].time_ms - sample.points[0].time_ms
+            contact_duration_ms = dynamics["contact_duration_ms"]
 
             return SignatureFeaturesSchema[float](
-                duration_ms=sample.points[-1].time_ms - sample.points[0].time_ms,
-                mean_altitude=fmean(
-                    [point.altitude for point in weighted_points], weights=weights
-                ),
-                mean_azimuth=azimuth.mean,
-                mean_pressure=fmean(
-                    [point.pressure for point in weighted_points], weights=weights
-                ),
-                shape_factor=width * height / dynamics["trajectory_length"] ** 2,
+                duration_ms=duration_ms,
+                pen_lift_count=len(strokes) - 1,
+                pen_up_duration_ms=max(0.0, duration_ms - contact_duration_ms),
                 **dynamics,
+                **self._get_contact_means(strokes=strokes),
+                **self._get_geometry(
+                    strokes=strokes, trajectory_length=dynamics["trajectory_length"]
+                ),
+                **self._get_phase_features(
+                    strokes=strokes, contact_duration_ms=contact_duration_ms
+                ),
             )
         except (ArithmeticError, ValueError) as error:
             raise InvalidSignatureSampleException(
                 detail="Не удалось вычислить конечные значения признаков подписи."
             ) from error
+
+    def _get_contact_means(
+        self, *, strokes: list[list[SignaturePointSchema]]
+    ) -> dict[str, float]:
+        weighted_points: list[SignaturePointSchema] = []
+        weights: list[float] = []
+
+        for stroke in strokes:
+            for previous, current in zip(stroke, stroke[1:]):
+                weight = (current.time_ms - previous.time_ms) / 2
+                weighted_points.extend((previous, current))
+                weights.extend((weight, weight))
+
+        azimuth = self.get_circular_statistics(
+            values=[point.azimuth for point in weighted_points], weights=weights
+        )
+
+        return {
+            "mean_altitude": fmean(
+                [point.altitude for point in weighted_points], weights=weights
+            ),
+            "mean_azimuth": azimuth.mean,
+            "mean_pressure": fmean(
+                [point.pressure for point in weighted_points], weights=weights
+            ),
+        }
+
+    def _get_geometry(
+        self, *, strokes: list[list[SignaturePointSchema]], trajectory_length: float
+    ) -> dict[str, float]:
+        contact_points = [point for stroke in strokes for point in stroke]
+        width = max(point.x for point in contact_points) - min(
+            point.x for point in contact_points
+        )
+        height = max(point.y for point in contact_points) - min(
+            point.y for point in contact_points
+        )
+
+        return {
+            "shape_factor": width * height / trajectory_length**2,
+            "start_x": contact_points[0].x,
+            "start_y": contact_points[0].y,
+            "end_x": contact_points[-1].x,
+            "end_y": contact_points[-1].y,
+        }
+
+    def _get_phase_features(
+        self,
+        *,
+        strokes: list[list[SignaturePointSchema]],
+        contact_duration_ms: float,
+    ) -> dict[str, float]:
+        features: dict[str, float] = {}
+        phase_duration = contact_duration_ms / len(
+            signature_settings.SIGNATURE_PHASE_NAMES
+        )
+
+        for index, name in enumerate(signature_settings.SIGNATURE_PHASE_NAMES):
+            speed, pressure = self._get_phase_means(
+                strokes=strokes,
+                start_ms=index * phase_duration,
+                end_ms=(index + 1) * phase_duration,
+            )
+            features[f"mean_speed_{name}"] = speed
+            features[f"mean_pressure_{name}"] = pressure
+
+        return features
+
+    def _get_phase_means(
+        self,
+        *,
+        strokes: list[list[SignaturePointSchema]],
+        start_ms: float,
+        end_ms: float,
+    ) -> tuple[float, float]:
+        # Время накапливается только внутри штрихов, без пауз между ними.
+        elapsed = 0.0
+        contact_duration = 0.0
+        trajectory_length = 0.0
+        pressure_integral = 0.0
+
+        for stroke in strokes:
+            for previous, current in zip(stroke, stroke[1:]):
+                duration = current.time_ms - previous.time_ms
+                overlap_start = max(start_ms, elapsed)
+                overlap_end = min(end_ms, elapsed + duration)
+                interval_start = elapsed
+                elapsed += duration
+
+                if overlap_end <= overlap_start:
+                    continue
+
+                overlap_duration = overlap_end - overlap_start
+                start_fraction = (overlap_start - interval_start) / duration
+                end_fraction = (overlap_end - interval_start) / duration
+                pressure_change = current.pressure - previous.pressure
+                start_pressure = previous.pressure + pressure_change * start_fraction
+                end_pressure = previous.pressure + pressure_change * end_fraction
+                pressure_integral += (
+                    (start_pressure + end_pressure) / 2 * overlap_duration
+                )
+                trajectory_length += (
+                    hypot(current.x - previous.x, current.y - previous.y)
+                    * overlap_duration
+                    / duration
+                )
+                contact_duration += overlap_duration
+
+        return (
+            trajectory_length
+            / contact_duration
+            * signature_settings.MILLISECONDS_PER_SECOND,
+            pressure_integral / contact_duration,
+        )
 
     def get_circular_statistics(
         self, *, values: list[float], weights: list[float] | None = None
@@ -175,6 +273,9 @@ class SignatureFeatureService:
             )
 
         return {
+            "contact_duration_ms": sum(
+                stroke[-1].time_ms - stroke[0].time_ms for stroke in strokes
+            ),
             "trajectory_length": trajectory_length,
             "mean_speed": trajectory_length / contact_duration,
             "maximum_speed": maximum_speed,

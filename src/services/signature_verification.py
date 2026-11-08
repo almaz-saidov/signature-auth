@@ -1,3 +1,4 @@
+import json
 from math import exp
 from uuid import UUID
 
@@ -47,12 +48,12 @@ class SignatureVerificationService:
         )
         decrypted_reference = self._encryption_service.decrypt(data=record.data)
 
-        reference = SignatureReferenceDataSchema.model_validate_json(
-            decrypted_reference
-        )
+        reference_data = json.loads(decrypted_reference)
 
-        if reference.version != signature_settings.SIGNATURE_REFERENCE_VERSION:
+        if reference_data["version"] != signature_settings.SIGNATURE_REFERENCE_VERSION:
             raise UnsupportedSignatureReferenceVersionException()
+
+        reference = SignatureReferenceDataSchema.model_validate(reference_data)
 
         try:
             normalized_sample = await self._normalization_service.normalize(

@@ -137,7 +137,7 @@ Authorization: Bearer <api_key>
 
 | Поле | Тип | Значение |
 | --- | --- | --- |
-| `validated` | boolean | `true` при `score >= 75`, иначе `false` |
+| `validated` | boolean | `true` при `score >= 44.887893393784765`, иначе `false` |
 | `score` | number | Степень соответствия в процентах, от 0 до 100 |
 
 Пример ответа:
