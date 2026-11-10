@@ -60,9 +60,6 @@ class SignatureFeatureService:
                 [point.altitude for point in weighted_points], weights=weights
             ),
             "mean_azimuth": azimuth.mean,
-            "mean_pressure": fmean(
-                [point.pressure for point in weighted_points], weights=weights
-            ),
         }
 
     def _get_geometry(
@@ -219,7 +216,6 @@ class SignatureFeatureService:
         self, *, strokes: list[list[SignaturePointSchema]]
     ) -> dict[str, float]:
         trajectory_length = 0.0
-        contact_duration = 0.0
         maximum_speed = 0.0
         acceleration_energy = 0.0
         acceleration_duration = 0.0
@@ -243,7 +239,6 @@ class SignatureFeatureService:
                 velocity_x = delta_x / duration
                 velocity_y = delta_y / duration
                 trajectory_length += hypot(delta_x, delta_y)
-                contact_duration += duration
                 maximum_speed = max(maximum_speed, hypot(velocity_x, velocity_y))
 
                 if previous_velocity is not None:
@@ -277,7 +272,6 @@ class SignatureFeatureService:
                 stroke[-1].time_ms - stroke[0].time_ms for stroke in strokes
             ),
             "trajectory_length": trajectory_length,
-            "mean_speed": trajectory_length / contact_duration,
             "maximum_speed": maximum_speed,
             "rms_acceleration": sqrt(acceleration_energy / acceleration_duration),
         }

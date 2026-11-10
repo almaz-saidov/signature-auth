@@ -56,7 +56,7 @@ class DatabaseSettings(BaseSettings):
 
 class SignatureSettings:
     REFERENCE_SAMPLE_COUNT: ClassVar[int] = 10
-    SIGNATURE_REFERENCE_VERSION: ClassVar[int] = 2
+    SIGNATURE_REFERENCE_VERSION: ClassVar[int] = 3
     SIGNATURE_PHASE_NAMES: ClassVar[tuple[str, ...]] = ("start", "middle", "end")
     MILLISECONDS_PER_SECOND: ClassVar[float] = 1000.0
     FULL_TURN_DEGREES: ClassVar[float] = 360.0
@@ -67,12 +67,10 @@ class SignatureSettings:
     VERIFICATION_WEIGHTS: ClassVar[dict[str, float]] = {
         "duration_ms": 0.06695575560380373,
         "trajectory_length": 0.007568917045878567,
-        "mean_speed": 4.6607070664248996e-07,
         "maximum_speed": 0.07592229700775364,
         "rms_acceleration": 0.03131696198535675,
         "mean_altitude": 0.060107213412768076,
         "mean_azimuth": 0.0739785584463694,
-        "mean_pressure": 0.0,
         "shape_factor": 0.05034562384476233,
         "pen_lift_count": 0.025005825433159358,
         "contact_duration_ms": 0.046612966682284214,
