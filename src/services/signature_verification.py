@@ -1,3 +1,4 @@
+import json
 from math import exp
 from uuid import UUID
 
@@ -47,12 +48,12 @@ class SignatureVerificationService:
         )
         decrypted_reference = self._encryption_service.decrypt(data=record.data)
 
-        reference = SignatureReferenceDataSchema.model_validate_json(
-            decrypted_reference
-        )
+        reference_data = json.loads(decrypted_reference)
 
-        if reference.version != signature_settings.SIGNATURE_REFERENCE_VERSION:
+        if reference_data["version"] != signature_settings.SIGNATURE_REFERENCE_VERSION:
             raise UnsupportedSignatureReferenceVersionException()
+
+        reference = SignatureReferenceDataSchema.model_validate(reference_data)
 
         try:
             normalized_sample = await self._normalization_service.normalize(
@@ -99,7 +100,7 @@ class SignatureVerificationService:
     ) -> float:
         difference = abs(value - statistics.mean)
 
-        if feature_name == "mean_azimuth":
+        if feature_name in signature_settings.CIRCULAR_FEATURE_NAMES:
             full_turn = signature_settings.FULL_TURN_DEGREES
             half_turn = full_turn / 2
             difference = abs(

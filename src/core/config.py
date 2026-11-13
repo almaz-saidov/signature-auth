@@ -56,23 +56,57 @@ class DatabaseSettings(BaseSettings):
 
 class SignatureSettings:
     REFERENCE_SAMPLE_COUNT: ClassVar[int] = 10
-    SIGNATURE_REFERENCE_VERSION: ClassVar[int] = 1
+    SIGNATURE_REFERENCE_VERSION: ClassVar[int] = 5
+    SIGNATURE_PHASE_NAMES: ClassVar[tuple[str, ...]] = ("start", "middle", "end")
+    CIRCULAR_FEATURE_NAMES: ClassVar[tuple[str, ...]] = (
+        "mean_azimuth_start",
+        "mean_azimuth_middle",
+        "mean_azimuth_end",
+    )
+    DIRECTION_SECTOR_COUNT: ClassVar[int] = 8
     MILLISECONDS_PER_SECOND: ClassVar[float] = 1000.0
     FULL_TURN_DEGREES: ClassVar[float] = 360.0
     CIRCULAR_MEAN_EPSILON: ClassVar[float] = 1e-12
     MIN_SIGNATURE_POINT_COUNT: ClassVar[int] = 2
     VERIFICATION_SCORE_MAX: ClassVar[float] = 100.0
-    VERIFICATION_THRESHOLD: ClassVar[float] = 75.0
+    VERIFICATION_THRESHOLD: ClassVar[float] = 47.03550793052496
     VERIFICATION_WEIGHTS: ClassVar[dict[str, float]] = {
-        "duration_ms": 1.0,
-        "trajectory_length": 1.0,
-        "mean_speed": 1.0,
-        "maximum_speed": 1.0,
-        "rms_acceleration": 1.0,
-        "mean_altitude": 1.0,
-        "mean_azimuth": 1.0,
-        "mean_pressure": 1.0,
-        "shape_factor": 1.0,
+        "duration_ms": 0.0493652085071491,
+        "trajectory_length": 0.0002899811115012122,
+        "maximum_speed": 0.044553680230785556,
+        "rms_acceleration": 0.03378800617590821,
+        "shape_factor": 0.0440368011300406,
+        "pen_lift_count": 0.004868247366028559,
+        "contact_duration_ms": 0.03963381244599419,
+        "pen_up_duration_ms": 0.0006779351455091557,
+        "start_x": 0.03821694388134867,
+        "start_y": 0.01765275392126188,
+        "end_x": 0.03689980936092488,
+        "end_y": 0.013770118474329188,
+        "mean_speed_start": 0.02095956243904895,
+        "mean_speed_middle": 0.047129509995783324,
+        "mean_speed_end": 0.04384192288509061,
+        "mean_pressure_start": 0.03182909473510577,
+        "mean_pressure_middle": 0.0252787425370073,
+        "mean_pressure_end": 0.055373407001261345,
+        "mean_azimuth_start": 0.04115570261983042,
+        "mean_azimuth_middle": 0.03078776627421228,
+        "mean_azimuth_end": 0.0010286827371067174,
+        "mean_altitude_start": 0.012130876957245063,
+        "mean_altitude_middle": 0.005463603085060648,
+        "mean_altitude_end": 0.013674894735902015,
+        "maximum_speed_time_ratio": 0.03476670939183648,
+        "maximum_pause_duration_ms": 0.04753299475836279,
+        "direction_length_ratio_0": 0.029690890554525253,
+        "direction_length_ratio_45": 0.02257569875793534,
+        "direction_length_ratio_90": 0.019811347035064132,
+        "direction_length_ratio_135": 0.03788827719314217,
+        "direction_length_ratio_180": 0.0038915049227251585,
+        "direction_length_ratio_225": 0.010408610618086728,
+        "direction_length_ratio_270": 0.02485546593420622,
+        "direction_length_ratio_315": 0.030878250419025408,
+        "total_turning_angle_degrees": 0.027809904853466325,
+        "pressure_speed_correlation": 0.057483281808188465,
     }
 
 
