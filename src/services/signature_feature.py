@@ -1,4 +1,5 @@
-from math import atan2, cos, degrees, hypot, log, radians, sin, sqrt
+from collections.abc import Iterator
+from math import atan2, cos, degrees, floor, fsum, hypot, log, radians, sin, sqrt
 from statistics import fmean
 
 from core.config import signature_settings
@@ -26,7 +27,16 @@ class SignatureFeatureService:
                 pen_lift_count=len(strokes) - 1,
                 pen_up_duration_ms=max(0.0, duration_ms - contact_duration_ms),
                 **dynamics,
-                **self._get_contact_means(strokes=strokes),
+                maximum_pause_duration_ms=self._get_maximum_pause_duration(
+                    strokes=strokes
+                ),
+                **self._get_direction_features(strokes=strokes),
+                total_turning_angle_degrees=self._get_total_turning_angle(
+                    strokes=strokes
+                ),
+                pressure_speed_correlation=self._get_pressure_speed_correlation(
+                    strokes=strokes
+                ),
                 **self._get_geometry(
                     strokes=strokes, trajectory_length=dynamics["trajectory_length"]
                 ),
@@ -39,27 +49,125 @@ class SignatureFeatureService:
                 detail="Не удалось вычислить конечные значения признаков подписи."
             ) from error
 
-    def _get_contact_means(
+    def _get_total_turning_angle(
         self, *, strokes: list[list[SignaturePointSchema]]
-    ) -> dict[str, float]:
-        weighted_points: list[SignaturePointSchema] = []
-        weights: list[float] = []
+    ) -> float:
+        turns: list[float] = []
+
+        for stroke in strokes:
+            previous_direction: tuple[float, float] | None = None
+
+            for previous, current in zip(stroke, stroke[1:]):
+                direction = current.x - previous.x, current.y - previous.y
+
+                if direction == (0, 0):
+                    continue
+
+                if previous_direction is not None:
+                    cross = (
+                        previous_direction[0] * direction[1]
+                        - previous_direction[1] * direction[0]
+                    )
+                    dot = (
+                        previous_direction[0] * direction[0]
+                        + previous_direction[1] * direction[1]
+                    )
+                    turns.append(abs(degrees(atan2(cross, dot))))
+
+                previous_direction = direction
+
+        return fsum(turns)
+
+    def _get_pressure_speed_correlation(
+        self, *, strokes: list[list[SignaturePointSchema]]
+    ) -> float:
+        speeds: list[float] = []
+        pressures: list[float] = []
+        durations: list[float] = []
 
         for stroke in strokes:
             for previous, current in zip(stroke, stroke[1:]):
-                weight = (current.time_ms - previous.time_ms) / 2
-                weighted_points.extend((previous, current))
-                weights.extend((weight, weight))
+                duration = (
+                    current.time_ms - previous.time_ms
+                ) / signature_settings.MILLISECONDS_PER_SECOND
+                speeds.append(
+                    hypot(current.x - previous.x, current.y - previous.y) / duration
+                )
+                pressures.append((previous.pressure + current.pressure) / 2)
+                durations.append(duration)
 
-        azimuth = self.get_circular_statistics(
-            values=[point.azimuth for point in weighted_points], weights=weights
+        return self._get_weighted_correlation(
+            speeds=speeds, pressures=pressures, durations=durations
         )
 
-        return {
-            "mean_altitude": fmean(
-                [point.altitude for point in weighted_points], weights=weights
+    def _get_weighted_correlation(
+        self, *, speeds: list[float], pressures: list[float], durations: list[float]
+    ) -> float:
+        if not durations or len(set(speeds)) == 1 or len(set(pressures)) == 1:
+            return 0.0
+
+        mean_speed = fmean(speeds, weights=durations)
+        mean_pressure = fmean(pressures, weights=durations)
+        speed_deviations = [speed - mean_speed for speed in speeds]
+        pressure_deviations = [pressure - mean_pressure for pressure in pressures]
+        speed_variance = fsum(
+            deviation**2 * duration
+            for deviation, duration in zip(speed_deviations, durations)
+        )
+        pressure_variance = fsum(
+            deviation**2 * duration
+            for deviation, duration in zip(pressure_deviations, durations)
+        )
+
+        if speed_variance == 0 or pressure_variance == 0:
+            return 0.0
+
+        covariance = fsum(
+            speed * pressure * duration
+            for speed, pressure, duration in zip(
+                speed_deviations, pressure_deviations, durations
+            )
+        )
+        correlation = covariance / (sqrt(speed_variance) * sqrt(pressure_variance))
+
+        return max(-1.0, min(1.0, correlation))
+
+    def _get_maximum_pause_duration(
+        self, *, strokes: list[list[SignaturePointSchema]]
+    ) -> float:
+        return max(
+            (
+                following[0].time_ms - previous[-1].time_ms
+                for previous, following in zip(strokes, strokes[1:])
             ),
-            "mean_azimuth": azimuth.mean,
+            default=0.0,
+        )
+
+    def _get_direction_features(
+        self, *, strokes: list[list[SignaturePointSchema]]
+    ) -> dict[str, float]:
+        sector_count = signature_settings.DIRECTION_SECTOR_COUNT
+        sector_width = signature_settings.FULL_TURN_DEGREES / sector_count
+        lengths = [0.0] * sector_count
+
+        for stroke in strokes:
+            for previous, current in zip(stroke, stroke[1:]):
+                delta_x = current.x - previous.x
+                delta_y = current.y - previous.y
+                length = hypot(delta_x, delta_y)
+
+                if length == 0:
+                    continue
+
+                angle = degrees(atan2(delta_y, delta_x))
+                sector = floor((angle + sector_width / 2) / sector_width) % sector_count
+                lengths[sector] += length
+
+        total_length = fsum(lengths)
+
+        return {
+            f"direction_length_ratio_{int(index * sector_width)}": length / total_length
+            for index, length in enumerate(lengths)
         }
 
     def _get_geometry(
@@ -92,29 +200,29 @@ class SignatureFeatureService:
             signature_settings.SIGNATURE_PHASE_NAMES
         )
 
-        for index, name in enumerate(signature_settings.SIGNATURE_PHASE_NAMES):
-            speed, pressure = self._get_phase_means(
+        for index, phase in enumerate(signature_settings.SIGNATURE_PHASE_NAMES):
+            values = self._get_phase_means(
                 strokes=strokes,
                 start_ms=index * phase_duration,
                 end_ms=(index + 1) * phase_duration,
             )
-            features[f"mean_speed_{name}"] = speed
-            features[f"mean_pressure_{name}"] = pressure
+            features.update(
+                {f"{name}_{phase}": value for name, value in values.items()}
+            )
 
         return features
 
-    def _get_phase_means(
+    def _get_phase_intervals(
         self,
         *,
         strokes: list[list[SignaturePointSchema]],
         start_ms: float,
         end_ms: float,
-    ) -> tuple[float, float]:
+    ) -> Iterator[
+        tuple[SignaturePointSchema, SignaturePointSchema, float, float, float]
+    ]:
         # Время накапливается только внутри штрихов, без пауз между ними.
         elapsed = 0.0
-        contact_duration = 0.0
-        trajectory_length = 0.0
-        pressure_integral = 0.0
 
         for stroke in strokes:
             for previous, current in zip(stroke, stroke[1:]):
@@ -127,28 +235,72 @@ class SignatureFeatureService:
                 if overlap_end <= overlap_start:
                     continue
 
-                overlap_duration = overlap_end - overlap_start
-                start_fraction = (overlap_start - interval_start) / duration
-                end_fraction = (overlap_end - interval_start) / duration
-                pressure_change = current.pressure - previous.pressure
-                start_pressure = previous.pressure + pressure_change * start_fraction
-                end_pressure = previous.pressure + pressure_change * end_fraction
-                pressure_integral += (
-                    (start_pressure + end_pressure) / 2 * overlap_duration
+                yield (
+                    previous,
+                    current,
+                    (overlap_start - interval_start) / duration,
+                    (overlap_end - interval_start) / duration,
+                    overlap_end - overlap_start,
                 )
-                trajectory_length += (
-                    hypot(current.x - previous.x, current.y - previous.y)
-                    * overlap_duration
-                    / duration
-                )
-                contact_duration += overlap_duration
 
-        return (
-            trajectory_length
+    def _get_phase_means(
+        self,
+        *,
+        strokes: list[list[SignaturePointSchema]],
+        start_ms: float,
+        end_ms: float,
+    ) -> dict[str, float]:
+        contact_duration = 0.0
+        trajectory_length = 0.0
+        pressure_integral = 0.0
+        altitudes: list[float] = []
+        azimuths: list[float] = []
+        weights: list[float] = []
+        full_turn = signature_settings.FULL_TURN_DEGREES
+
+        for (
+            previous,
+            current,
+            start_fraction,
+            end_fraction,
+            duration,
+        ) in self._get_phase_intervals(
+            strokes=strokes, start_ms=start_ms, end_ms=end_ms
+        ):
+            pressure_change = current.pressure - previous.pressure
+            start_pressure = previous.pressure + pressure_change * start_fraction
+            end_pressure = previous.pressure + pressure_change * end_fraction
+            pressure_integral += (start_pressure + end_pressure) / 2 * duration
+            trajectory_length += (
+                hypot(current.x - previous.x, current.y - previous.y)
+                * duration
+                / (current.time_ms - previous.time_ms)
+            )
+            contact_duration += duration
+            altitude_change = current.altitude - previous.altitude
+            azimuth_change = (
+                current.azimuth - previous.azimuth + full_turn / 2
+            ) % full_turn - full_turn / 2
+            altitudes.extend(
+                previous.altitude + altitude_change * fraction
+                for fraction in (start_fraction, end_fraction)
+            )
+            azimuths.extend(
+                previous.azimuth + azimuth_change * fraction
+                for fraction in (start_fraction, end_fraction)
+            )
+            weights.extend((duration / 2, duration / 2))
+
+        return {
+            "mean_speed": trajectory_length
             / contact_duration
             * signature_settings.MILLISECONDS_PER_SECOND,
-            pressure_integral / contact_duration,
-        )
+            "mean_pressure": pressure_integral / contact_duration,
+            "mean_altitude": fmean(altitudes, weights=weights),
+            "mean_azimuth": self.get_circular_statistics(
+                values=azimuths, weights=weights
+            ).mean,
+        }
 
     def get_circular_statistics(
         self, *, values: list[float], weights: list[float] | None = None
@@ -219,15 +371,16 @@ class SignatureFeatureService:
         maximum_speed = 0.0
         acceleration_energy = 0.0
         acceleration_duration = 0.0
+        elapsed_contact_ms = 0.0
+        maximum_speed_time_ms = 0.0
 
         for stroke in strokes:
             previous_velocity: tuple[float, float] | None = None
             previous_duration = 0.0
 
             for previous, current in zip(stroke, stroke[1:]):
-                duration = (
-                    current.time_ms - previous.time_ms
-                ) / signature_settings.MILLISECONDS_PER_SECOND
+                duration_ms = current.time_ms - previous.time_ms
+                duration = duration_ms / signature_settings.MILLISECONDS_PER_SECOND
 
                 if duration <= 0:
                     raise InvalidSignatureSampleException(
@@ -239,7 +392,13 @@ class SignatureFeatureService:
                 velocity_x = delta_x / duration
                 velocity_y = delta_y / duration
                 trajectory_length += hypot(delta_x, delta_y)
-                maximum_speed = max(maximum_speed, hypot(velocity_x, velocity_y))
+                speed = hypot(velocity_x, velocity_y)
+
+                if speed > maximum_speed:
+                    maximum_speed = speed
+                    maximum_speed_time_ms = elapsed_contact_ms + duration_ms / 2
+
+                elapsed_contact_ms += duration_ms
 
                 if previous_velocity is not None:
                     # Скорости относятся к серединам соседних временных интервалов.
@@ -273,5 +432,6 @@ class SignatureFeatureService:
             ),
             "trajectory_length": trajectory_length,
             "maximum_speed": maximum_speed,
+            "maximum_speed_time_ratio": maximum_speed_time_ms / elapsed_contact_ms,
             "rms_acceleration": sqrt(acceleration_energy / acceleration_duration),
         }

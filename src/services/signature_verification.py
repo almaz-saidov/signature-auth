@@ -100,7 +100,7 @@ class SignatureVerificationService:
     ) -> float:
         difference = abs(value - statistics.mean)
 
-        if feature_name == "mean_azimuth":
+        if feature_name in signature_settings.CIRCULAR_FEATURE_NAMES:
             full_turn = signature_settings.FULL_TURN_DEGREES
             half_turn = full_turn / 2
             difference = abs(

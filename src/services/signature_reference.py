@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import signature_settings
 from core.exceptions.database import DatabaseException
 from core.exceptions.http import (
     InvalidSignatureException,
@@ -161,7 +162,7 @@ class SignatureReferenceService(DatabaseService[SignatureReferenceRepository]):
                     getattr(sample_features, name) for sample_features in features
                 ]
 
-                if name == "mean_azimuth":
+                if name in signature_settings.CIRCULAR_FEATURE_NAMES:
                     statistics[name] = self._feature_service.get_circular_statistics(
                         values=values
                     )
