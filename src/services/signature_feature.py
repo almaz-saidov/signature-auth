@@ -1,9 +1,12 @@
 from collections.abc import Iterator
 from math import atan2, cos, degrees, floor, fsum, hypot, log, radians, sin, sqrt
-from statistics import fmean
+from statistics import fmean, mean, stdev
 
 from core.config import signature_settings
-from core.exceptions.signature import InvalidSignatureSampleException
+from core.exceptions.signature import (
+    InvalidSignatureSampleException,
+    ReferenceFormationException,
+)
 from schemas.signature_feature import (
     SignatureFeaturesSchema,
     SignatureFeatureStatisticsSchema,
@@ -301,6 +304,30 @@ class SignatureFeatureService:
                 values=azimuths, weights=weights
             ).mean,
         }
+
+    def get_statistics(
+        self, *, features: list[SignatureFeaturesSchema[float]]
+    ) -> SignatureFeaturesSchema[SignatureFeatureStatisticsSchema]:
+        statistics: dict[str, SignatureFeatureStatisticsSchema] = {}
+
+        try:
+            for name in SignatureFeaturesSchema.model_fields:
+                values = [
+                    getattr(sample_features, name) for sample_features in features
+                ]
+
+                if name in signature_settings.CIRCULAR_FEATURE_NAMES:
+                    statistics[name] = self.get_circular_statistics(values=values)
+                else:
+                    statistics[name] = SignatureFeatureStatisticsSchema(
+                        mean=mean(values), standard_deviation=stdev(values)
+                    )
+
+            return SignatureFeaturesSchema[SignatureFeatureStatisticsSchema](
+                **statistics
+            )
+        except (ArithmeticError, ValueError) as error:
+            raise ReferenceFormationException() from error
 
     def get_circular_statistics(
         self, *, values: list[float], weights: list[float] | None = None

@@ -56,6 +56,8 @@ class DatabaseSettings(BaseSettings):
 
 class SignatureSettings:
     REFERENCE_SAMPLE_COUNT: ClassVar[int] = 10
+    # Подобран без отказов на исходных регистрационных наборах MCYT.
+    REGISTRATION_CONSISTENCY_THRESHOLD: ClassVar[float] = 33.0
     SIGNATURE_REFERENCE_VERSION: ClassVar[int] = 5
     SIGNATURE_PHASE_NAMES: ClassVar[tuple[str, ...]] = ("start", "middle", "end")
     CIRCULAR_FEATURE_NAMES: ClassVar[tuple[str, ...]] = (
