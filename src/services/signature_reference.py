@@ -1,4 +1,3 @@
-from statistics import mean, stdev
 from typing import Literal
 from uuid import UUID
 
@@ -16,10 +15,7 @@ from core.exceptions.signature import (
 )
 from database.repositories.signature_reference import SignatureReferenceRepository
 from schemas.pagination import PaginatedSchema
-from schemas.signature_feature import (
-    SignatureFeaturesSchema,
-    SignatureFeatureStatisticsSchema,
-)
+from schemas.signature_feature import SignatureFeaturesSchema
 from schemas.signature_reference import (
     CreateSignatureReferencePayloadSchema,
     ListSignatureReferenceFiltersSchema,
@@ -31,6 +27,7 @@ from schemas.signature_reference import (
 )
 from services.database import DatabaseService
 from services.encryption import EncryptionService
+from services.signature_comparison import SignatureComparisonService
 from services.signature_feature import SignatureFeatureService
 from services.signature_normalization import SignatureNormalizationService
 
@@ -43,11 +40,13 @@ class SignatureReferenceService(DatabaseService[SignatureReferenceRepository]):
         session: AsyncSession,
         normalization_service: SignatureNormalizationService,
         feature_service: SignatureFeatureService,
+        comparison_service: SignatureComparisonService,
         encryption_service: EncryptionService,
     ) -> None:
         super().__init__(repository=repository, session=session)
         self._normalization_service = normalization_service
         self._feature_service = feature_service
+        self._comparison_service = comparison_service
         self._encryption_service = encryption_service
 
     async def create_or_update(
@@ -154,28 +153,28 @@ class SignatureReferenceService(DatabaseService[SignatureReferenceRepository]):
             self._feature_service.extract(sample=sample)
             for sample in normalized_samples
         ]
-        statistics: dict[str, SignatureFeatureStatisticsSchema] = {}
+        self._validate_samples_consistency(features=features)
 
-        try:
-            for name in SignatureFeaturesSchema.model_fields:
-                values = [
-                    getattr(sample_features, name) for sample_features in features
-                ]
+        return SignatureReferenceDataSchema(
+            sample_count=len(normalized_samples),
+            features=self._feature_service.get_statistics(features=features),
+        )
 
-                if name in signature_settings.CIRCULAR_FEATURE_NAMES:
-                    statistics[name] = self._feature_service.get_circular_statistics(
-                        values=values
-                    )
-                else:
-                    statistics[name] = SignatureFeatureStatisticsSchema(
-                        mean=mean(values), standard_deviation=stdev(values)
-                    )
+    def _validate_samples_consistency(
+        self, *, features: list[SignatureFeaturesSchema[float]]
+    ) -> None:
+        scores: list[float] = []
 
-            return SignatureReferenceDataSchema(
-                sample_count=len(normalized_samples),
-                features=SignatureFeaturesSchema[SignatureFeatureStatisticsSchema](
-                    **statistics
-                ),
+        for index, sample_features in enumerate(features):
+            statistics = self._feature_service.get_statistics(
+                features=features[:index] + features[index + 1 :]
             )
-        except (ArithmeticError, ValueError) as error:
-            raise ReferenceFormationException() from error
+            score = self._comparison_service.calculate_score(
+                features=sample_features, statistics=statistics
+            )
+            scores.append(score)
+
+        if min(scores) < signature_settings.REGISTRATION_CONSISTENCY_THRESHOLD:
+            raise ReferenceFormationException(
+                detail="Регистрационные образцы недостаточно согласованы. Повторите сбор подписей."
+            )

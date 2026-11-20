@@ -10,6 +10,7 @@ from schemas.user import UserSchema
 from services.api_key import APIKeyService
 from services.authentication import AuthenticationService
 from services.encryption import EncryptionService
+from services.signature_comparison import SignatureComparisonService
 from services.signature_feature import SignatureFeatureService
 from services.signature_normalization import SignatureNormalizationService
 from services.signature_reference import SignatureReferenceService
@@ -41,6 +42,10 @@ async def get_signature_feature_service() -> SignatureFeatureService:
     return SignatureFeatureService()
 
 
+async def get_signature_comparison_service() -> SignatureComparisonService:
+    return SignatureComparisonService()
+
+
 async def get_encryption_service() -> EncryptionService:
     return EncryptionService(
         key=bytes.fromhex(application_settings.SECRET_KEY.get_secret_value())
@@ -66,6 +71,9 @@ async def get_signature_reference_service(
         get_signature_normalization_service
     ),
     feature_service: SignatureFeatureService = Depends(get_signature_feature_service),
+    comparison_service: SignatureComparisonService = Depends(
+        get_signature_comparison_service
+    ),
     encryption_service: EncryptionService = Depends(get_encryption_service),
 ) -> SignatureReferenceService:
     return SignatureReferenceService(
@@ -73,6 +81,7 @@ async def get_signature_reference_service(
         session=session,
         normalization_service=normalization_service,
         feature_service=feature_service,
+        comparison_service=comparison_service,
         encryption_service=encryption_service,
     )
 
@@ -85,12 +94,16 @@ async def get_signature_verification_service(
         get_signature_normalization_service
     ),
     feature_service: SignatureFeatureService = Depends(get_signature_feature_service),
+    comparison_service: SignatureComparisonService = Depends(
+        get_signature_comparison_service
+    ),
     encryption_service: EncryptionService = Depends(get_encryption_service),
 ) -> SignatureVerificationService:
     return SignatureVerificationService(
         reference_service=reference_service,
         normalization_service=normalization_service,
         feature_service=feature_service,
+        comparison_service=comparison_service,
         encryption_service=encryption_service,
     )
 
